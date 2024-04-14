@@ -19,7 +19,8 @@ def scrape_trending_tickers():
     return tickers, percent_changes
 
 def save_to_sqlite(tickers, percent_changes):
-    conn = sqlite3.connect('tickers.db')
+    db_file = 'tickers.db'
+    conn = sqlite3.connect(db_file)
     c = conn.cursor()
 
     # Create the table if it doesn't exist
