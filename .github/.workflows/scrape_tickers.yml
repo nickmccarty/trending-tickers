@@ -20,7 +20,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install requests beautifulsoup4 jinja2
+        pip install requests beautifulsoup4 jinja2 sqlite3
         
     - name: Scrape Trending Tickers
       run: |
@@ -30,4 +30,4 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: Update trending tickers
-        file_pattern: index.html
+        file_pattern: index.html tickers.db
