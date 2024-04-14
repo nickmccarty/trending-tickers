@@ -2,7 +2,7 @@ name: Scrape Trending Tickers
 
 on:
   schedule:
-    - cron: '15 * * * *' # Run every hour at the top of the hour
+    - cron: '*/25 * * * *' # Run every hour at the top of the hour
 
 jobs:
 
