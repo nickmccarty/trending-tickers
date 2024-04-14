@@ -11,10 +11,27 @@ def scrape_trending_tickers():
     tickers = []
     percent_changes = []
 
+    def scrape_trending_tickers():
+    url = "https://finance.yahoo.com/trending-tickers"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, "html.parser")
+
+    tickers = []
+    percent_changes = []
+
     for row in soup.find_all("tr")[1:]:
-        cols = row.find_all("td")
-        tickers.append(cols[0].text.strip())
-        percent_changes.append(float(cols[1].text.strip("%")))
+      cols = row.find_all("td")
+      ticker = cols[0].text.strip()
+      percent_change_str = cols[1].text.strip("%")
+
+      try:
+          percent_change = float(percent_change_str)
+      except ValueError:
+          # If conversion fails, skip this row
+          continue
+
+      tickers.append(ticker)
+      percent_changes.append(percent_change)
 
     return tickers, percent_changes
 
