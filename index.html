@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trending Tickers</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>Trending Tickers</h1>
+    <canvas id="myChart"></canvas>
+
+    <script>
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ["TSLA", "CRM", "MPW", "GS", "DJT", "SCHW", "KAVL", "BTC-USD", "PLL", "WIRE", "LGVN", "^TNX", "INFA", "SNGX", "DJTWW", "BHVN", "MRNS", "WELL.TO", "UL", "RIVN", "ONVO", "RDDT", "FSRN", "SRNE", "MTB", "SPCB", "SAVAW", "TLT", "HUBC", "PSNY"],
+                datasets: [{
+                    label: '% Change',
+                    data: [-3.18, -4.87, 19.42, 3.65, -16.78, 4.01, 206.55, 0.32, 21.29, 11.87, 47.62, 3.09, -8.19, 33.32, -12.18, -12.97, -79.59, -1.66, 0.73, -5.97, 23.53, -4.09, 40.52, 375.0, 6.53, 45.54, -78.82, -1.83, 34.71, -7.93],
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
