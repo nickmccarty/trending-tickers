@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout repository
-    - uses: actions/checkout@v4
+    - name: Checkout Repository
+      uses: actions/checkout@v4
       with:
         token: ${{ secrets.ACCESS_TOKEN }}
         ref: ${{ github.event.before }}
@@ -31,8 +31,6 @@ jobs:
         python scrape_tickers.py
         
     - name: Commit and Push Changes
-      env:
-        INPUT_PUSH_OPTIONS: 'origin HEAD:main'
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: Update trending tickers
