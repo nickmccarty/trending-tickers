@@ -25,7 +25,6 @@ def scrape_trending_tickers():
         return None
 
     # Assuming the ticker symbols are in the 'Symbol' column and percent changes are in the '% Change' column
-    current_time=str(current_time)
     tickers = trending_tickers_df['Symbol'].tolist()
     names = trending_tickers_df['Name'].tolist()
     last_price = trending_tickers_df['Last Price'].tolist()
@@ -33,21 +32,30 @@ def scrape_trending_tickers():
     volume = trending_tickers_df['Volume'].str.strip().tolist()
     market_cap = trending_tickers_df['Market Cap'].str.strip().tolist()
 
-    return current_time, tickers, names, last_price, percent_changes, volume, market_cap
+    # Get recent news for each ticker
+    latest_news = []
+    for ticker in tickers:
+        news = get_recent_news(ticker)
+        latest_news.append(news)
 
-def save_to_sqlite(current_time, tickers, names, last_price, percent_changes, volume, market_cap):
+    # Convert current_time to string format
+    current_time = str(current_time)
+
+    return current_time, tickers, names, last_price, percent_changes, volume, market_cap, latest_news
+
+def save_to_sqlite(current_time, tickers, names, last_price, percent_changes, volume, market_cap, latest_news):
     db_file = 'tickers.db'
     conn = sqlite3.connect(db_file)
     c = conn.cursor()
 
     # Create the table if it doesn't exist
     c.execute('''CREATE TABLE IF NOT EXISTS trending_tickers
-                 (current_time TEXT, ticker TEXT, name TEXT, last_price REAL, percent_change REAL, volume TEXT, market_cap TEXT)''')
+                 (current_time TEXT, ticker TEXT, name TEXT, last_price REAL, percent_change REAL, volume TEXT, market_cap TEXT, latest_news TEXT)''')
 
     # Insert the data
-    for ticker, name, last_price, percent_change, volume, market_cap in zip(tickers, names, last_price, percent_changes, volume, market_cap):
-        c.execute("INSERT INTO trending_tickers (current_time, ticker, name, last_price, percent_change, volume, market_cap) VALUES (?, ?, ?, ?, ?, ?, ?)", (current_time, ticker, name, last_price, percent_change, volume, market_cap))
-
+    for ticker, name, last_price, percent_change, volume, market_cap, news in zip(tickers, names, last_price, percent_changes, volume, market_cap, latest_news):
+        c.execute("INSERT INTO trending_tickers (current_time, ticker, name, last_price, percent_change, volume, market_cap, latest_news) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (current_time, ticker, name, last_price, percent_change, volume, market_cap, news))
+    
     conn.commit()
     conn.close()
 
@@ -59,7 +67,25 @@ def render_html(current_time, tickers, names, last_price, percent_changes, volum
     with open("index.html", "w") as f:
         f.write(html)
 
+def get_recent_news(ticker):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
+    }
+
+    url = 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s&region=US&lang=en-US' % ticker
+
+    response = requests.get(url, headers=headers)
+    feed = feedparser.parse(response.text)
+
+    # Get the most recent story if available
+    if feed.entries:
+        most_recent_story = feed.entries[0]
+        summary = most_recent_story.summary
+        return summary
+    else:
+        return None
+
 if __name__ == "__main__":
-    current_time, tickers, names, last_price, percent_changes, volume, market_cap = scrape_trending_tickers()
-    save_to_sqlite(current_time, tickers, names, last_price, percent_changes, volume, market_cap)
+    current_time, tickers, names, last_price, percent_changes, volume, market_cap, latest_news = scrape_trending_tickers()
+    save_to_sqlite(current_time, tickers, names, last_price, percent_changes, volume, market_cap, latest_news)
     render_html(current_time, tickers, names, last_price, percent_changes, volume, market_cap)
