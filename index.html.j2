@@ -13,7 +13,7 @@
         var myChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: {{ tickers|tojson }},
+                labels: {{ names|tojson }},
                 datasets: [{
                     label: '% Change',
                     data: {{ percent_changes|tojson }},
