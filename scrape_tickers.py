@@ -80,14 +80,14 @@ def get_recent_news(ticker):
     # Get the most recent story if available
     if feed.entries:
         most_recent_stories = feed.entries
-        most_recent_story = most_recent_stories[0]
+        # most_recent_story = most_recent_stories[0]
 
-        # Convert published date string to datetime object
-        published_date = datetime.strptime(most_recent_story.published, "%a, %d %b %Y %H:%M:%S %z")
-        title = most_recent_story.title
-        link = most_recent_story.link
+        # # Convert published date string to datetime object
+        # published_date = datetime.strptime(most_recent_story.published, "%a, %d %b %Y %H:%M:%S %z")
+        # title = most_recent_story.title
+        # link = most_recent_story.link
         summary = most_recent_story.summary
-        return published_date, title, summary, link
+        return summary
     else:
         # Return None if no recent story is available
         return None
