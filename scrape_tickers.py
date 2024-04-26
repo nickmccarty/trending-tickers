@@ -44,7 +44,7 @@ def scrape_trending_tickers():
     return current_time, tickers, names, last_price, percent_changes, volume, market_cap, latest_news
 
 def save_to_sqlite(current_time, tickers, names, last_price, percent_changes, volume, market_cap, latest_news):
-    db_file = 'trending_tickers.db'
+    db_file = 'tickers.db'
     conn = sqlite3.connect(db_file)
     c = conn.cursor()
 
