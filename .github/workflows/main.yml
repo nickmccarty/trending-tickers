@@ -34,4 +34,4 @@ jobs:
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: Update trending tickers
-        file_pattern: index.html tickers.db
+        file_pattern: index.html trending_tickers.db
