@@ -59,7 +59,7 @@ def scrape_trending_tickers():
     last_price = trending_tickers_df['Last Price'].tolist()
     percent_changes = trending_tickers_df['% Change'].astype(str).str.lstrip('+').str.replace(',', '').str.rstrip('%').astype(float).tolist()
     trading_volume = trending_tickers_df['Volume'].astype(str).str.strip().tolist()
-    market_cap = trending_tickers_df['Market Cap'].str.strip().tolist()
+    market_cap = trending_tickers_df['Market Cap'].astype(str).str.strip().tolist()
 
     sector = []
     industry = []
