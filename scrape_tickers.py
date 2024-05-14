@@ -41,17 +41,43 @@ def scrape_trending_tickers():
     current_time = datetime.now()
     url = "https://finance.yahoo.com/trending-tickers/"
     
-    try:
-        tables = pd.read_html(url)
-    except Exception as e:
-        print("Error occurred while reading HTML table:", e)
-        return None
+    headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
+              }
 
-    if not tables:
-        print("No tables found on the webpage.")
-        return None
+    # Fetch the webpage content
+    response = requests.get(url, headers=headers)
+    html_content = response.text
 
-    trending_tickers_df = tables[0]
+    # Parse HTML
+    soup = BeautifulSoup(html_content, "html.parser")
+
+    # Find the table containing the data
+    table = soup.find("table")
+
+    # Extract table rows
+    rows = table.find_all("tr")
+
+    # Initialize a list to store the parsed data
+    parsed_data = []
+
+    # Loop through rows and extract data
+    for row in rows:
+        # Extract table data cells
+        cells = row.find_all("td")
+        # Extract text from each cell and add to parsed_data if number of columns is consistent
+        # if len(cells) == 11:  # Assuming the table has 11 columns
+        parsed_row = [cell.text.strip() for cell in cells]
+        parsed_data.append(parsed_row)
+
+    # Extract header row
+    header_row = [header.text.strip() for header in rows[0].find_all("th")]
+
+    # Convert parsed data to DataFrame
+    df = pd.DataFrame(parsed_data, columns=header_row)
+
+    # Display DataFrame
+    trending_tickers_df = df.drop(['Intraday High/Low', '52 Week Range', 'Day Chart'], axis = 1).dropna()
     current_time = str(current_time)
     market_time = trending_tickers_df['Market Time'].tolist()
     ticker_symbols = trending_tickers_df['Symbol'].tolist()
