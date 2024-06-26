@@ -85,7 +85,7 @@ def scrape_trending_tickers():
     last_price = trending_tickers_df['Last Price'].tolist()
     # percent_changes = trending_tickers_df['% Change'].astype(str).str.lstrip('+').str.replace(',', '').str.rstrip('%').astype(float).tolist()
     # Convert percent change to float (handling 'N/A' values)
-    percent_changes = trending_tickers_df['% Change'].str.lstrip('+').str.replace(',', '').str.rstrip('%').replace('N/A', '').astype(float).tolist()
+    percent_changes = trending_tickers_df['% Change'].str.lstrip('+').str.replace(',', '').str.rstrip('%').replace('N/A', '0.0').astype(float).tolist()
     trading_volume = trending_tickers_df['Volume'].str.strip().tolist()
     market_cap = trending_tickers_df['Market Cap'].str.strip().tolist()
 
