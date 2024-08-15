@@ -77,7 +77,10 @@ def scrape_trending_tickers():
     df = pd.DataFrame(parsed_data, columns=header_row)
 
     # Display DataFrame
-    trending_tickers_df = df.drop(['Intraday High/Low', '52 Week Range', 'Day Chart'], axis = 1).dropna()
+    try:
+        trending_tickers_df = df.drop(['Intraday High/Low', '52 Week Range', 'Day Chart'], axis = 1).dropna()
+    except:
+        trending_tickers_df = df.dropna()
     current_time = str(current_time)
     market_time = trending_tickers_df['Market Time'].tolist()
     ticker_symbols = trending_tickers_df['Symbol'].tolist()
