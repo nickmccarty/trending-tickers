@@ -9,31 +9,25 @@ import feedparser
 import yfinance as yf
 
 def get_recent_news(ticker):
-
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
     }
 
-    url = 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s&region=US&lang=en-US'%ticker
-
+    url = 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s&region=US&lang=en-US' % ticker
     response = requests.get(url, headers=headers)
     feed = feedparser.parse(response.text)
 
-    # Get the most recent story if available
     if feed.entries:
-        most_recent_stories = feed.entries
-        most_recent_story = most_recent_stories[0]
-
-        # Convert published date string to datetime object
+        most_recent_story = feed.entries[0]
         article_timestamp = datetime.strptime(most_recent_story.published, "%a, %d %b %Y %H:%M:%S %z")
         article_title = most_recent_story.title
         article_link = most_recent_story.link
         article_summary = most_recent_story.summary
     else:
-        article_timestamp.append('')
-        article_title.append('')
-        article_link.append('')
-        article_summary.append('')
+        article_timestamp = None
+        article_title = ''
+        article_link = ''
+        article_summary = ''
 
     return article_timestamp, article_title, article_summary, article_link
 
@@ -42,77 +36,70 @@ def scrape_trending_tickers():
     url = "https://finance.yahoo.com/trending-tickers/"
     
     headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
-              }
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
+    }
 
-    # Fetch the webpage content
     response = requests.get(url, headers=headers)
     html_content = response.text
-
-    # Parse HTML
     soup = BeautifulSoup(html_content, "html.parser")
 
-    # Find the table containing the data
     table = soup.find("table")
 
-    # Extract table rows
-    rows = table.find_all("tr")
+    # Extract table headers
+    headers = [th.get_text(strip=True) for th in table.find_all('th')]
 
-    # Initialize a list to store the parsed data
-    parsed_data = []
+    # Extract all rows
+    rows = []
+    for row in table.find_all('tr')[1:]:  # skip the header row
+        cols = row.find_all('td')
+        
+        # Extract the symbol and company name correctly
+        symbol_div = cols[0].find('div', class_='name')
+        symbol = symbol_div.find('span', class_='symbol').get_text(strip=True)
+        company_name = symbol_div.find('span', class_='longName').get_text(strip=True)
+        
+        # Extracting price and change data
+        price_info = cols[1]
+        price = price_info.find('fin-streamer').get_text(strip=True)
+        change = price_info.find_all('fin-streamer')[1].get_text(strip=True)
+        change_percent = price_info.find_all('fin-streamer')[2].get_text(strip=True)
+        
+        # Extract other columns
+        other_cols = [col.get_text(strip=True) for col in cols[4:]]
+        
+        # Combine everything into a single row
+        rows.append([symbol, company_name, price, change, change_percent] + other_cols)
 
-    # Loop through rows and extract data
-    for row in rows:
-        # Extract table data cells
-        cells = row.find_all("td")
-        # Extract text from each cell and add to parsed_data if number of columns is consistent
-        # if len(cells) == 11:  # Assuming the table has 11 columns
-        parsed_row = [cell.text.strip() for cell in cells]
-        parsed_data.append(parsed_row)
+    # Create a DataFrame
+    df = pd.DataFrame(rows, columns=['Symbol', 'Company Name', 'Price', 'Change', 'Change %'] + headers[4:])
 
-    # Extract header row
-    header_row = [header.text.strip() for header in rows[0].find_all("th")]
+    # Prepare the data to match the existing schema
+    ticker_symbols = df['Symbol'].tolist()
+    company_names = df['Company Name'].tolist()
+    last_price = df['Price'].tolist()
+    percent_changes = df['Change %'].str.replace(',', '').str.rstrip('%').str.lstrip("(+").str.rstrip(")%").replace('N/A', '0.0').astype(float).tolist()    
+    trading_volume = df['Volume'].tolist()
+    market_cap = df['Market Cap'].tolist()
 
-    # Convert parsed data to DataFrame
-    df = pd.DataFrame(parsed_data, columns=header_row)
-
-    # Display DataFrame
-    try:
-        trending_tickers_df = df.drop(['Intraday High/Low', '52 Week Range', 'Day Chart'], axis = 1).dropna()
-    except:
-        trending_tickers_df = df.dropna()
-    current_time = str(current_time)
-    market_time = trending_tickers_df['Market Time'].tolist()
-    ticker_symbols = trending_tickers_df['Symbol'].tolist()
-    company_names = trending_tickers_df['Name'].tolist()
-    last_price = trending_tickers_df['Last Price'].tolist()
-    # percent_changes = trending_tickers_df['% Change'].astype(str).str.lstrip('+').str.replace(',', '').str.rstrip('%').astype(float).tolist()
-    # Convert percent change to float (handling 'N/A' values)
-    percent_changes = trending_tickers_df['% Change'].str.lstrip('+').str.replace(',', '').str.rstrip('%').replace('N/A', '0.0').astype(float).tolist()
-    trading_volume = trending_tickers_df['Volume'].str.strip().tolist()
-    market_cap = trending_tickers_df['Market Cap'].str.strip().tolist()
+    # For the missing Market Time, we'll pass None
+    market_time = [None] * len(ticker_symbols)
 
     sector = []
     industry = []
-
     for ticker in ticker_symbols:
-
-      try:
+        try:
             ticker_data = yf.Ticker(ticker)
-            sector.append(ticker_data.info['sector'])
-            industry.append(ticker_data.info['industry'])
-      except Exception as e:
-          # print("Error occurred while processing ticker", ticker, ":", e)
-          sector.append('')
-          industry.append('')
+            sector.append(ticker_data.info.get('sector', ''))
+            industry.append(ticker_data.info.get('industry', ''))
+        except Exception as e:
+            sector.append('')
+            industry.append('')
 
     article_timestamp = []
     article_title = []
     article_summary = []
     article_link = []
-
     for ticker in ticker_symbols:
-
         try:
             timestamp, title, summary, link = get_recent_news(ticker)
             article_timestamp.append(timestamp)
@@ -120,11 +107,10 @@ def scrape_trending_tickers():
             article_summary.append(summary)
             article_link.append(link)
         except Exception as e:
-            # print("Error occurred while processing ticker", ticker, ":", e)
-            article_timestamp.append('')
+            article_timestamp.append(None)
             article_title.append('')
-            article_link.append('')
             article_summary.append('')
+            article_link.append('')
 
     return current_time, market_time, ticker_symbols, company_names, sector, industry, last_price, percent_changes, trading_volume, market_cap, article_timestamp, article_title, article_summary, article_link
 
