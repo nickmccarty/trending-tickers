@@ -71,7 +71,7 @@ def scrape_trending_tickers():
         rows.append([symbol, company_name, price, change, change_percent] + other_cols)
 
     # Create a DataFrame
-    df = pd.DataFrame(rows, columns=['Symbol', 'Company Name', 'Price', 'Change', 'Change %'] + headers[4:])
+    df = pd.DataFrame(rows, columns=['Symbol', 'Company Name', 'Price', 'Change', 'Change %'] + headers[4:]).dropna()
 
     # Prepare the data to match the existing schema
     ticker_symbols = df['Symbol'].tolist()
