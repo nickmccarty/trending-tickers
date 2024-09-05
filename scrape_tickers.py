@@ -33,7 +33,8 @@ def get_recent_news(ticker):
 
 def scrape_trending_tickers():
     current_time = datetime.now()
-    url = "https://finance.yahoo.com/trending-tickers/"
+    # url = "https://finance.yahoo.com/trending-tickers/"
+    url = "https://finance.yahoo.com/markets/stocks/trending/"
     
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
