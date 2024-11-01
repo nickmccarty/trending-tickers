@@ -33,7 +33,6 @@ def get_recent_news(ticker):
 
 def scrape_trending_tickers():
     current_time = datetime.now()
-    # url = "https://finance.yahoo.com/trending-tickers/"
     url = "https://finance.yahoo.com/markets/stocks/trending/"
     
     headers = {
@@ -55,9 +54,15 @@ def scrape_trending_tickers():
         cols = row.find_all('td')
         
         # Extract the symbol and company name correctly
-        symbol_div = cols[0].find('div', class_='name')
-        symbol = symbol_div.find('span', class_='symbol').get_text(strip=True)
-        company_name = symbol_div.find('span', class_='longName').get_text(strip=True)
+        symbol_div = cols[0].find('td', class_='cell')
+        # if symbol_div:
+        # Company name is now inside a div with a title attribute
+        company_name = symbol_div.find('div').get('title', '').strip() # if symbol_div.find('div') else ''
+        # Extract symbol directly from the span or set it as empty if not present
+        symbol = symbol_div.find('span').get_text(strip=True) # if symbol_div.find('span') else ''
+        # else:
+        #     symbol = ''
+        #     company_name = ''
         
         # Extracting price and change data
         price_info = cols[1]
