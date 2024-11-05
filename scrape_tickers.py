@@ -34,56 +34,50 @@ def get_recent_news(ticker):
 def scrape_trending_tickers():
     current_time = datetime.now()
     url = "https://finance.yahoo.com/markets/stocks/trending/"
-    
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
-    }
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
 
-    response = requests.get(url, headers=headers)
-    html_content = response.text
-    soup = BeautifulSoup(html_content, "html.parser")
-
-    table = soup.find("table")
+    # Find the table for trending stocks
+    table = soup.find('table', class_='markets-table')
 
     # Extract table headers
     headers = [th.get_text(strip=True) for th in table.find_all('th')]
 
-    # Extract all rows
-    rows = []
-    for row in table.find_all('tr')[1:]:  # skip the header row
-        cols = row.find_all('td')
-        
-        # Extract the symbol and company name correctly
-        symbol_div = cols[0].find('td', class_='cell')
-        # if symbol_div:
-        # Company name is now inside a div with a title attribute
-        company_name = symbol_div.find('div').get('title', '').strip() # if symbol_div.find('div') else ''
-        # Extract symbol directly from the span or set it as empty if not present
-        symbol = symbol_div.find('span').get_text(strip=True) # if symbol_div.find('span') else ''
-        # else:
-        #     symbol = ''
-        #     company_name = ''
-        
-        # Extracting price and change data
-        price_info = cols[1]
-        price = price_info.find('fin-streamer').get_text(strip=True)
-        change = price_info.find_all('fin-streamer')[1].get_text(strip=True)
-        change_percent = price_info.find_all('fin-streamer')[2].get_text(strip=True)
-        
-        # Extract other columns
-        other_cols = [col.get_text(strip=True) for col in cols[4:]]
-        
-        # Combine everything into a single row
-        rows.append([symbol, company_name, price, change, change_percent] + other_cols)
+    # Extract table rows
+    data = []
+    for row in table.find_all('tr')[1:]:  # Skip the header row
+        cells = row.find_all('td')
+        if cells:
+            row_data = []
+            for cell in cells:
+                link = cell.find('a', {'data-testid': 'table-cell-ticker'})
+                if link:
+                    row_data.append(link.get_text(strip=True))  # Ticker symbol
+                else:
+                    row_data.append(cell.get_text(strip=True))  # Other cell values
+            data.append(row_data)
 
     # Create a DataFrame
-    df = pd.DataFrame(rows, columns=['Symbol', 'Company Name', 'Price', 'Change', 'Change %'] + headers[4:]).dropna()
+    df = pd.DataFrame(data, columns=headers)
+
+    # Clean the Price, Change, and Change % columns
+    df[['Price', 'Change', 'Change %']] = df['Price'].str.extract(r'(\d+\.\d+)([+-]\d+\.\d+)\s*\(([-+]?\d+\.\d+%)\)')
+
+    # Convert data types
+    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+    df['Change'] = pd.to_numeric(df['Change'], errors='coerce')
+    df['Change %'] = df['Change %'].str.replace('%', '').astype(float) / 100  # Convert percentage string to float
+
+    # Optionally, convert other numeric columns if needed
+    numeric_columns = ['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %']
+    for column in numeric_columns:
+        df[column] = pd.to_numeric(df[column].str.replace('M', 'e6').str.replace('B', 'e9'), errors='coerce')
 
     # Prepare the data to match the existing schema
     ticker_symbols = df['Symbol'].tolist()
-    company_names = df['Company Name'].tolist()
+    company_names = df['Name'].tolist()
     last_price = df['Price'].tolist()
-    percent_changes = df['Change %'].str.replace(',', '').str.rstrip('%').str.lstrip("(+").str.rstrip(")%").replace('N/A', '0.0').astype(float).tolist()    
+    percent_changes = df['Change %'].tolist()
     trading_volume = df['Volume'].tolist()
     market_cap = df['Market Cap'].tolist()
 
