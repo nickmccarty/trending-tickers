@@ -32,10 +32,7 @@ def get_recent_news(ticker):
     return article_timestamp, article_title, article_summary, article_link
 
 def scrape_trending_tickers():
-    # Get current time
     current_time = datetime.now()
-
-    # URL and headers
     url = "https://finance.yahoo.com/markets/stocks/trending/"
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
@@ -54,74 +51,75 @@ def scrape_trending_tickers():
     headers = [th.get_text(strip=True) for th in table.find_all('th')]
 
     # Extract table rows
-    rows = []
-    for tr in table.find_all('tr')[1:]:  # Skip header row
-        cells = tr.find_all('td')
+    data = []
+    for row in table.find_all('tr')[1:]:  # Skip the header row
+        cells = row.find_all('td')
         if cells:
-            row = [cell.get_text(strip=True) for cell in cells]
-            rows.append(row)
+            row_data = []
+            for cell in cells:
+                link = cell.find('a', {'data-testid': 'table-cell-ticker'})
+                if link:
+                    row_data.append(link.get_text(strip=True))  # Ticker symbol
+                else:
+                    row_data.append(cell.get_text(strip=True))  # Other cell values
+            data.append(row_data)
 
-    # Create DataFrame
-    df = pd.DataFrame(rows, columns=headers)
+    # Create a DataFrame
+    df = pd.DataFrame(data, columns=headers)
 
-    # Clean numeric columns
-    for col in ['Price', 'Change', 'Change %']:
-        if col in df.columns:
-            df[col] = df[col].str.replace('[%,]', '', regex=True).str.replace('—', '0')
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+    # Clean the Price, Change, and Change % columns
+    df[['Price', 'Change', 'Change %']] = df['Price'].str.extract(r'(\d+\.\d+)([+-]\d+\.\d+)\s*\(([-+]?\d+\.\d+%)\)')
 
-    # Convert volume and market cap
-    def convert_to_number(val):
-        if isinstance(val, str):
-            if 'M' in val:
-                return float(val.replace('M', '')) * 1e6
-            elif 'B' in val:
-                return float(val.replace('B', '')) * 1e9
-            elif 'K' in val:
-                return float(val.replace('K', '')) * 1e3
-        return pd.to_numeric(val, errors='coerce')
+    # Convert data types
+    df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
+    df['Change'] = pd.to_numeric(df['Change'], errors='coerce')
+    df['Change %'] = df['Change %'].str.replace('%', '').astype(float) / 100  # Convert percentage string to float
 
-    for col in ['Volume', 'Avg Vol (3M)', 'Market Cap']:
-        if col in df.columns:
-            df[col] = df[col].apply(convert_to_number)
+    # Optionally, convert other numeric columns if needed
+    numeric_columns = ['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %']
+    for column in numeric_columns:
+        df[column] = pd.to_numeric(df[column].str.replace('M', 'e6').str.replace('B', 'e9'), errors='coerce')
 
-    # Add market time as None
-    market_time = [None] * len(df)
+    # Prepare the data to match the existing schema
+    ticker_symbols = df['Symbol'].tolist()
+    company_names = df['Name'].tolist()
+    last_price = df['Price'].tolist()
+    percent_changes = df['Change %'].tolist()
+    trading_volume = df['Volume'].tolist()
+    market_cap = df['Market Cap'].tolist()
 
-    # Fetch sector and industry from yfinance
-    sectors, industries = [], []
-    for symbol in df['Symbol']:
+    # For the missing Market Time, we'll pass None
+    market_time = [None] * len(ticker_symbols)
+
+    sector = []
+    industry = []
+    for ticker in ticker_symbols:
         try:
-            ticker = yf.Ticker(symbol)
-            info = ticker.history(period="1d")
-            sectors.append(ticker.info.get('sector', '') if hasattr(ticker, "info") else '')
-            industries.append(ticker.info.get('industry', '') if hasattr(ticker, "info") else '')
-        except Exception:
-            sectors.append('')
-            industries.append('')
+            ticker_data = yf.Ticker(ticker)
+            sector.append(ticker_data.info.get('sector', ''))
+            industry.append(ticker_data.info.get('industry', ''))
+        except Exception as e:
+            sector.append('')
+            industry.append('')
 
-    # Placeholder for article data (since get_recent_news is missing)
-    article_timestamp = [None] * len(df)
-    article_title = [''] * len(df)
-    article_summary = [''] * len(df)
-    article_link = [''] * len(df)
+    article_timestamp = []
+    article_title = []
+    article_summary = []
+    article_link = []
+    for ticker in ticker_symbols:
+        try:
+            timestamp, title, summary, link = get_recent_news(ticker)
+            article_timestamp.append(timestamp)
+            article_title.append(title)
+            article_summary.append(summary)
+            article_link.append(link)
+        except Exception as e:
+            article_timestamp.append(None)
+            article_title.append('')
+            article_summary.append('')
+            article_link.append('')
 
-    return (
-        current_time,
-        market_time,
-        df['Symbol'].tolist(),
-        df['Name'].tolist(),
-        sectors,
-        industries,
-        df['Price'].tolist(),
-        df['Change %'].tolist(),
-        df['Volume'].tolist(),
-        df['Market Cap'].tolist(),
-        article_timestamp,
-        article_title,
-        article_summary,
-        article_link
-    )
+    return current_time, market_time, ticker_symbols, company_names, sector, industry, last_price, percent_changes, trading_volume, market_cap, article_timestamp, article_title, article_summary, article_link
 
 def save_to_sqlite(current_time, market_time, ticker_symbols, company_names, sector, industry, last_price, percent_changes, trading_volume, market_cap, article_timestamp, article_title, article_summary, article_link):
     db_file = 'trending-tickers.db'
