@@ -74,7 +74,7 @@ def scrape_trending_tickers():
     # Convert data types
     df['Price'] = pd.to_numeric(df['Price'], errors='coerce')
     df['Change'] = pd.to_numeric(df['Change'], errors='coerce')
-    df['Change %'] = df['Change %'].str.replace('%', '').astype(float) / 100  # Convert percentage string to float
+    df['Change %'] = df['Change %'].str.replace('%', '').astype(float)
 
     # Optionally, convert other numeric columns if needed
     numeric_columns = ['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %']
