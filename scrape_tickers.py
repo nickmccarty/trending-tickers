@@ -44,7 +44,7 @@ def scrape_trending_tickers():
     soup = BeautifulSoup(response.content, 'html.parser')
 
     # Find the trending stocks table
-    table = soup.find('table', {'class': 'markets-table'})
+    table = soup.find('table', {'class': 'bd'})
     if table is None:
         raise ValueError("Trending stocks table not found")
 
