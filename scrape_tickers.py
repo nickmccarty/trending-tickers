@@ -79,8 +79,15 @@ def scrape_trending_tickers():
     # Optionally, convert other numeric columns if needed
     numeric_columns = ['Volume', 'Avg Vol (3M)', 'Market Cap', 'P/E Ratio (TTM)', '52 Wk Change %']
     for column in numeric_columns:
-        df[column] = pd.to_numeric(df[column].str.replace('M', 'e6').str.replace('B', 'e9'), errors='coerce')
-
+        if column in df.columns:
+            df[column] = pd.to_numeric(df[column]
+                                      .str.replace('M', 'e6', regex=False)
+                                      .str.replace('B', 'e9', regex=False)
+                                      .str.replace('%', '', regex=False),
+                                      errors='coerce')
+        else:
+            df[column] = np.nan  # Add a column with NaNs if it doesn't exist
+    
     # Prepare the data to match the existing schema
     ticker_symbols = df['Symbol'].tolist()
     company_names = df['Name'].tolist()
