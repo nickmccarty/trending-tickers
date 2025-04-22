@@ -86,7 +86,7 @@ def scrape_trending_tickers():
                                       .str.replace('%', '', regex=False),
                                       errors='coerce')
         else:
-            df[column] = np.nan  # Add a column with NaNs if it doesn't exist
+            df[column] = ''  # Add a column with NaNs if it doesn't exist
     
     # Prepare the data to match the existing schema
     ticker_symbols = df['Symbol'].tolist()
