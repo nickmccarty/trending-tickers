@@ -3,33 +3,59 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
-from datetime import datetime
+from datetime import datetime, timezone
 import json
-import feedparser
 import yfinance as yf
 
-def get_recent_news(ticker):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0'
-    }
+def _parse_news_timestamp(value):
+    """Parse a yfinance news pubDate/displayTime (ISO 8601, e.g. '2026-06-24T15:55:32Z')
+    into a timezone-aware datetime, matching the archive timestamp format."""
+    if not value:
+        return None
+    try:
+        # fromisoformat handles offsets; normalise a trailing 'Z' to +00:00
+        return datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+    except ValueError:
+        return None
 
-    url = 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=%s&region=US&lang=en-US' % ticker
-    response = requests.get(url, headers=headers)
-    feed = feedparser.parse(response.text)
+def get_recent_news(ticker, ticker_data=None):
+    """Return (timestamp, title, summary, link) for the most recent news story
+    about ``ticker``.
 
-    if feed.entries:
-        most_recent_story = feed.entries[0]
-        article_timestamp = datetime.strptime(most_recent_story.published, "%a, %d %b %Y %H:%M:%S %z")
-        article_title = most_recent_story.title
-        article_link = most_recent_story.link
-        article_summary = most_recent_story.summary
-    else:
-        article_timestamp = None
-        article_title = ''
-        article_link = ''
-        article_summary = ''
+    The legacy Yahoo RSS endpoint (feeds.finance.yahoo.com/rss/2.0/headline) was
+    retired in 2025 and now returns HTTP 429 for every request, which is why news
+    coverage dropped to 0%. yfinance exposes the same Yahoo Finance news via
+    ``Ticker.news``, so we use that instead. A ``ticker_data`` object can be passed
+    in to reuse an existing yf.Ticker and avoid a duplicate lookup.
+    """
+    if ticker_data is None:
+        ticker_data = yf.Ticker(ticker)
 
-    return article_timestamp, article_title, article_summary, article_link
+    try:
+        items = ticker_data.news or []
+    except Exception:
+        items = []
+
+    stories = []
+    for item in items:
+        # Newer yfinance nests the fields under "content"; older versions are flat.
+        content = item.get('content', item) if isinstance(item, dict) else {}
+        title = content.get('title') or ''
+        if not title:
+            continue
+        ts = _parse_news_timestamp(content.get('pubDate') or content.get('displayTime'))
+        summary = content.get('summary') or content.get('description') or ''
+        link = (content.get('canonicalUrl') or {}).get('url') \
+            or (content.get('clickThroughUrl') or {}).get('url') \
+            or content.get('link') or ''
+        stories.append((ts, title, summary, link))
+
+    if not stories:
+        return None, '', '', ''
+
+    # Most recent story first (items without a timestamp sort last).
+    stories.sort(key=lambda s: s[0] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    return stories[0]
 
 def scrape_trending_tickers():
     current_time = datetime.now()
@@ -101,22 +127,22 @@ def scrape_trending_tickers():
 
     sector = []
     industry = []
-    for ticker in ticker_symbols:
-        try:
-            ticker_data = yf.Ticker(ticker)
-            sector.append(ticker_data.info.get('sector', ''))
-            industry.append(ticker_data.info.get('industry', ''))
-        except Exception as e:
-            sector.append('')
-            industry.append('')
-
     article_timestamp = []
     article_title = []
     article_summary = []
     article_link = []
     for ticker in ticker_symbols:
         try:
-            timestamp, title, summary, link = get_recent_news(ticker)
+            ticker_data = yf.Ticker(ticker)
+            sector.append(ticker_data.info.get('sector', ''))
+            industry.append(ticker_data.info.get('industry', ''))
+        except Exception as e:
+            ticker_data = None
+            sector.append('')
+            industry.append('')
+
+        try:
+            timestamp, title, summary, link = get_recent_news(ticker, ticker_data)
             article_timestamp.append(timestamp)
             article_title.append(title)
             article_summary.append(summary)
