@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trending Tickers — Signal Dashboard</title>
+<style>
+  :root { --bg:#0f1216; --card:#171c22; --line:#262e38; --tx:#e6edf3; --mut:#8b98a5;
+          --green:#2ea043; --red:#e5534b; --amber:#d29922; --blue:#388bfd; --gray:#4b5563; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx);
+         font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:20px; }
+  .sub { color:var(--mut); font-size:12px; margin-top:4px; }
+  .wrap { padding:18px 22px; max-width:1200px; }
+  .banner { background:#1b2027; border:1px solid var(--line); border-left:3px solid var(--amber);
+            border-radius:8px; padding:10px 14px; font-size:12px; color:var(--mut); margin-bottom:18px; }
+  .banner b { color:var(--tx); }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--mut); margin:22px 0 10px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .card .tk { font-weight:700; font-size:15px; }
+  .card .act { float:right; font-weight:700; font-size:12px; padding:2px 8px; border-radius:12px; }
+  .long { background:rgba(46,160,67,.18); color:var(--green); }
+  .short { background:rgba(229,83,75,.18); color:var(--red); }
+  .card .meta { color:var(--mut); font-size:12px; margin-top:6px; }
+  .card .hl { font-size:12px; margin-top:8px; color:var(--tx); }
+  .controls { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  select, label { font-size:12px; color:var(--tx); }
+  select { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--mut); font-weight:600; font-size:11px; text-transform:uppercase; cursor:pointer; }
+  td.reasons { white-space:normal; color:var(--mut); font-size:12px; max-width:280px; }
+  .badge { padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .pos { background:rgba(46,160,67,.15); color:var(--green); }
+  .neg { background:rgba(229,83,75,.15); color:var(--red); }
+  .neu { background:rgba(139,152,165,.12); color:var(--mut); }
+  .calm { color:var(--green); } .moderate { color:var(--blue); }
+  .elevated { color:var(--amber); } .high { color:var(--red); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .up { color:var(--green); } .down { color:var(--red); }
+  .bar { display:inline-block; height:6px; border-radius:3px; background:var(--line); width:60px; vertical-align:middle; position:relative; }
+  .bar > i { position:absolute; left:0; top:0; height:100%; border-radius:3px; }
+  footer { padding:16px 22px; border-top:1px solid var(--line); color:var(--mut); font-size:12px; }
+  a { color:var(--blue); }
+  .muted { color:var(--mut); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Trending Tickers — Signal Dashboard</h1>
+  <div class="sub">Snapshot {{ snapshot }} · {{ n }} tickers · generated {{ generated_at }} UTC
+     · sentiment: {{ backend }} · <a href="signals.jsonl">raw signals (JSON) for agents ↗</a></div>
+</header>
+<div class="wrap">
+
+  <div class="banner">
+    <b>How to read this (OOS-validated {{ generated_at[:10] }}):</b>
+    <b>Risk regime</b> is the most reliable signal — trust it for position sizing.
+    <b>Fade risk</b> is a soft prior (persistence AUC 0.65 OOS), not a precise probability.
+    <b>Direction</b> is shown only on high-conviction calls; the confident tail looks strong
+    (~0.8 precision) but on a thin sample — size accordingly. Not financial advice.
+  </div>
+
+  <h2>⚡ Actionable — high-conviction directional calls</h2>
+  <div class="cards" id="actionable"></div>
+
+  <h2>All trending tickers</h2>
+  <div class="controls">
+    <label>Sort:
+      <select id="sort">
+        <option value="attention">Attention intensity</option>
+        <option value="fade">Fade risk</option>
+        <option value="pctchg">% change</option>
+        <option value="risk">Risk regime</option>
+        <option value="sentiment">Sentiment</option>
+      </select>
+    </label>
+    <label>Sector: <select id="sector"><option value="">All</option></select></label>
+    <label><input type="checkbox" id="actonly"> Actionable only</label>
+  </div>
+  <table id="tbl">
+    <thead><tr>
+      <th>Ticker</th><th>Sector</th><th class="num">Price</th><th class="num">%Chg</th>
+      <th>Risk</th><th>Fade risk</th><th>Direction</th><th>Sentiment</th>
+      <th>Attention</th><th>Why (top drivers)</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+<footer>
+  Models: {{ model_versions }} · Signals are decision-support, not trade instructions.
+  Universe = Yahoo trending board only (selection bias is intentional scope).
+</footer>
+
+<script>
+const SIGNALS = {{ signals_json }};
+const REGIME_ORDER = {calm:0, moderate:1, elevated:2, high:3};
+const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+
+function sentBadge(s){ const c = s.label==='positive'?'pos':s.label==='negative'?'neg':'neu';
+  return `<span class="badge ${c}" title="${(s.headline||'').replace(/"/g,'&quot;')}">${s.label} ${s.score>0?'+':''}${s.score}</span>`; }
+function bar(v,color){ return `<span class="bar"><i style="width:${Math.round((v||0)*100)}%;background:${color}"></i></span>`; }
+
+function dirCell(b){
+  if(!b || !b.actionable) return '<span class="muted">—</span>';
+  const c = b.action==='up'?'up':'down';
+  return `<span class="${c}" title="p_up ${b.p_up} / p_down ${b.p_down} · epistemic ${b.epistemic_std}">`
+       + `${b.action==='up'?'▲ LONG':'▼ SHORT'} (${Math.max(b.p_up,b.p_down)})</span>`;
+}
+
+function actionableCards(){
+  const host = document.getElementById('actionable');
+  const acts = SIGNALS.filter(r=>r.bayes && r.bayes.actionable);
+  if(!acts.length){ host.innerHTML = '<div class="muted">No high-conviction directional calls this snapshot — the models are standing aside (the expected default).</div>'; return; }
+  acts.sort((a,b)=>Math.max(b.bayes.p_up,b.bayes.p_down)-Math.max(a.bayes.p_up,a.bayes.p_down));
+  acts.forEach(r=>{ const b=r.bayes; const long=b.action==='up';
+    const c = el('div','card');
+    c.innerHTML = `<span class="act ${long?'long':'short'}">${long?'LONG':'SHORT'}</span>`
+      + `<div class="tk">${r.ticker}</div>`
+      + `<div class="meta">${r.sector||''} · $${r.last_price} <span class="${r.percent_change>=0?'up':'down'}">${r.percent_change>=0?'+':''}${r.percent_change}%</span></div>`
+      + `<div class="meta">conf ${Math.max(b.p_up,b.p_down)} · risk <span class="${b.regime}">${b.regime}</span> · ${sentBadge(r.sentiment)}</div>`
+      + (r.sentiment.headline?`<div class="hl">${r.sentiment.headline}</div>`:'');
+    host.appendChild(c); });
+}
+
+function render(){
+  const sortBy=document.getElementById('sort').value;
+  const sec=document.getElementById('sector').value;
+  const actonly=document.getElementById('actonly').checked;
+  let rows=SIGNALS.slice();
+  if(sec) rows=rows.filter(r=>r.sector===sec);
+  if(actonly) rows=rows.filter(r=>r.bayes&&r.bayes.actionable);
+  const key={attention:r=>-r.signals.attention_intensity, fade:r=>-r.signals.fade_risk,
+    pctchg:r=>-(r.percent_change||0), risk:r=>-(REGIME_ORDER[r.signals.vol_regime]||0),
+    sentiment:r=>-(r.sentiment.score||0)}[sortBy];
+  rows.sort((a,b)=>key(a)-key(b));
+  const tb=document.querySelector('#tbl tbody'); tb.innerHTML='';
+  rows.forEach(r=>{ const s=r.signals; const tr=el('tr');
+    tr.innerHTML =
+      `<td><b>${r.ticker}</b></td><td class="muted">${r.sector||''}</td>`
+    + `<td class="num">${r.last_price??''}</td>`
+    + `<td class="num ${r.percent_change>=0?'up':'down'}">${r.percent_change>=0?'+':''}${r.percent_change??''}</td>`
+    + `<td class="${s.vol_regime}">${s.vol_regime}</td>`
+    + `<td>${bar(s.fade_risk,'var(--red)')} <span class="muted">${s.fade_risk}</span></td>`
+    + `<td>${dirCell(r.bayes)}</td>`
+    + `<td>${sentBadge(r.sentiment)}</td>`
+    + `<td>${bar(s.attention_intensity,'var(--blue)')}</td>`
+    + `<td class="reasons">${(r.reasons||[]).join(' · ')}</td>`;
+    tb.appendChild(tr); });
+}
+
+(function init(){
+  const secs=[...new Set(SIGNALS.map(r=>r.sector).filter(Boolean))].sort();
+  const sel=document.getElementById('sector'); secs.forEach(s=>sel.appendChild(el('option',null,s)).value=s);
+  ['sort','sector','actonly'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+  actionableCards(); render();
+})();
+</script>
+</body>
+</html>

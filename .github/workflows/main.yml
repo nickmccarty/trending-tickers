@@ -19,19 +19,31 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: 3.9
-        
+        python-version: "3.12"   # match the env the models were trained in (pickle compat)
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pandas requests beautifulsoup4 jinja2 lxml datetime yfinance
-        
+        pip install requests beautifulsoup4 jinja2 lxml datetime yfinance
+        # Pinned to the versions the models were trained/pickled with so the
+        # sklearn .joblib ensembles load reliably in CI. No torch — sentiment
+        # runs on the lexicon backend (equivalent to FinBERT for the models).
+        pip install numpy==1.26.4 pandas==2.2.2 scipy==1.13.1 pyarrow==16.1.0 \
+                    scikit-learn==1.5.1 lightgbm==4.6.0 joblib==1.4.2
+
     - name: Scrape Trending Tickers
       run: |
         python scrape_tickers.py
-        
+
+    - name: Generate signals + dashboard
+      env:
+        SENTIMENT_BACKEND: lexicon
+      run: |
+        python ml/emit_signals.py
+        python render_dashboard.py --out index.html
+
     - name: Commit and Push Changes
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
         commit_message: Update trending tickers
-        file_pattern: index.html trending-tickers.db
+        file_pattern: index.html trending-tickers.db ml/signals.jsonl

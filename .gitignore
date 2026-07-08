@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# ML artifacts that are large or regenerable (NOT the small model files CI needs)
+ml/dataset.parquet
+ml/sentiment_cache.db
+ml/buffett_fundamentals.db
+
+# Local dashboard preview (CI renders index.html directly)
+dashboard.html
+
+# Stray local DB copies
+trending-tickers-poc.db
+
+# Committed on purpose (CI loads/serves these):
+#   ml/model_*.txt, ml/bayes_*.joblib, ml/calib_*.joblib, ml/bayes_meta.json
+#   ml/signals.jsonl (regenerated + committed hourly by the workflow)

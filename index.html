@@ -1,35 +1,163 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Trending Tickers</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trending Tickers — Signal Dashboard</title>
+<style>
+  :root { --bg:#0f1216; --card:#171c22; --line:#262e38; --tx:#e6edf3; --mut:#8b98a5;
+          --green:#2ea043; --red:#e5534b; --amber:#d29922; --blue:#388bfd; --gray:#4b5563; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx);
+         font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; }
+  header { padding:18px 22px; border-bottom:1px solid var(--line); }
+  h1 { margin:0; font-size:20px; }
+  .sub { color:var(--mut); font-size:12px; margin-top:4px; }
+  .wrap { padding:18px 22px; max-width:1200px; }
+  .banner { background:#1b2027; border:1px solid var(--line); border-left:3px solid var(--amber);
+            border-radius:8px; padding:10px 14px; font-size:12px; color:var(--mut); margin-bottom:18px; }
+  .banner b { color:var(--tx); }
+  h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--mut); margin:22px 0 10px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .card .tk { font-weight:700; font-size:15px; }
+  .card .act { float:right; font-weight:700; font-size:12px; padding:2px 8px; border-radius:12px; }
+  .long { background:rgba(46,160,67,.18); color:var(--green); }
+  .short { background:rgba(229,83,75,.18); color:var(--red); }
+  .card .meta { color:var(--mut); font-size:12px; margin-top:6px; }
+  .card .hl { font-size:12px; margin-top:8px; color:var(--tx); }
+  .controls { display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:10px; }
+  select, label { font-size:12px; color:var(--tx); }
+  select { background:var(--card); border:1px solid var(--line); border-radius:6px; padding:5px 8px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  th { color:var(--mut); font-weight:600; font-size:11px; text-transform:uppercase; cursor:pointer; }
+  td.reasons { white-space:normal; color:var(--mut); font-size:12px; max-width:280px; }
+  .badge { padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .pos { background:rgba(46,160,67,.15); color:var(--green); }
+  .neg { background:rgba(229,83,75,.15); color:var(--red); }
+  .neu { background:rgba(139,152,165,.12); color:var(--mut); }
+  .calm { color:var(--green); } .moderate { color:var(--blue); }
+  .elevated { color:var(--amber); } .high { color:var(--red); }
+  .num { text-align:right; font-variant-numeric:tabular-nums; }
+  .up { color:var(--green); } .down { color:var(--red); }
+  .bar { display:inline-block; height:6px; border-radius:3px; background:var(--line); width:60px; vertical-align:middle; position:relative; }
+  .bar > i { position:absolute; left:0; top:0; height:100%; border-radius:3px; }
+  footer { padding:16px 22px; border-top:1px solid var(--line); color:var(--mut); font-size:12px; }
+  a { color:var(--blue); }
+  .muted { color:var(--mut); }
+</style>
 </head>
 <body>
-    <h1>Trending Tickers</h1>
-    <canvas id="myChart"></canvas>
+<header>
+  <h1>Trending Tickers — Signal Dashboard</h1>
+  <div class="sub">Snapshot 2026-07-08T18:41:36.086878 · 25 tickers · generated 2026-07-08T20:01:43 UTC
+     · sentiment: lexicon · <a href="signals.jsonl">raw signals (JSON) for agents ↗</a></div>
+</header>
+<div class="wrap">
 
-    <script>
-        var ctx = document.getElementById('myChart').getContext('2d');
-        var myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ["Alibaba Group Holding Limited", "Broadcom Inc.", "NVIDIA Corporation", "Penguin Solutions, Inc.", "Catheter Precision, Inc.", "Nuvve Holding Corp.", "AMC Entertainment Holdings, Inc.", "Arista Networks, Inc.", "Battalion Oil Corporation", "SRX Global Inc.", "Bloom Energy Corporation", "Capital One Financial Corporation", "Alignment Healthcare, Inc.", "Prime Medicine, Inc.", "QXO, Inc.", "Canaan Inc.", "Edible Garden AG Incorporated", "Kingsoft Cloud Holdings Limited", "Synchrony Financial", "Polibeli Group Ltd", "Apple Inc.", "Onfolio Holdings, Inc.", "Sadot Group Inc.", "FuelCell Energy, Inc.", "Occidental Petroleum Corporation"],
-                datasets: [{
-                    label: '% Change',
-                    data: [11.49, 5.27, 3.85, 25.48, 91.53, 69.38, 10.47, 7.7, -8.48, 47.8, -5.88, -5.17, -15.95, 14.91, -4.03, 24.42, 32.53, 12.08, -8.98, -23.22, 0.7, -37.92, -52.47, -12.9, 3.59],
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    </script>
+  <div class="banner">
+    <b>How to read this (OOS-validated 2026-07-08):</b>
+    <b>Risk regime</b> is the most reliable signal — trust it for position sizing.
+    <b>Fade risk</b> is a soft prior (persistence AUC 0.65 OOS), not a precise probability.
+    <b>Direction</b> is shown only on high-conviction calls; the confident tail looks strong
+    (~0.8 precision) but on a thin sample — size accordingly. Not financial advice.
+  </div>
+
+  <h2>⚡ Actionable — high-conviction directional calls</h2>
+  <div class="cards" id="actionable"></div>
+
+  <h2>All trending tickers</h2>
+  <div class="controls">
+    <label>Sort:
+      <select id="sort">
+        <option value="attention">Attention intensity</option>
+        <option value="fade">Fade risk</option>
+        <option value="pctchg">% change</option>
+        <option value="risk">Risk regime</option>
+        <option value="sentiment">Sentiment</option>
+      </select>
+    </label>
+    <label>Sector: <select id="sector"><option value="">All</option></select></label>
+    <label><input type="checkbox" id="actonly"> Actionable only</label>
+  </div>
+  <table id="tbl">
+    <thead><tr>
+      <th>Ticker</th><th>Sector</th><th class="num">Price</th><th class="num">%Chg</th>
+      <th>Risk</th><th>Fade risk</th><th>Direction</th><th>Sentiment</th>
+      <th>Attention</th><th>Why (top drivers)</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+<footer>
+  Models: persistence=lgb_24h_v1, vol=lgb_24h_v1, bayes=boot_logistic_v1 · Signals are decision-support, not trade instructions.
+  Universe = Yahoo trending board only (selection bias is intentional scope).
+</footer>
+
+<script>
+const SIGNALS = [{"snapshot": "2026-07-08T18:41:36.086878", "ticker": "WING", "sector": "Consumer Cyclical", "last_price": 154.64, "percent_change": -9.15, "signals": {"persistence_prob_24h": 0.4009, "fade_risk": 0.5991, "vol_regime": "moderate", "vol_estimate_24h": 0.00783, "attention_intensity": 0.173}, "reasons": ["reappeared on the board very recently", "new to the board", "thin trading"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 1.0, "label": "positive", "headline": "Zaxbys, Now Past 1,000 Locations, Gathers Growth Momentum", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.127, "p_flat": 0.685, "p_up": 0.188, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.761, "epistemic_std": 0.0067, "regime": "elevated", "regime_prob": 0.644, "regime_epistemic_std": 0.0055}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "WYFI", "sector": "Technology", "last_price": 36.11, "percent_change": 8.05, "signals": {"persistence_prob_24h": 0.6364, "fade_risk": 0.3636, "vol_regime": "moderate", "vol_estimate_24h": 0.01126, "attention_intensity": 0.187}, "reasons": ["reappeared on the board very recently", "new to the board", "volume below its own recent norm"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 1.0, "label": "positive", "headline": "Is WhiteFiber, Inc. (WYFI) A Good Stock To Buy Now?", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.14, "p_flat": 0.6, "p_up": 0.26, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.848, "epistemic_std": 0.0056, "regime": "elevated", "regime_prob": 0.598, "regime_epistemic_std": 0.0064}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "NVDA", "sector": "Technology", "last_price": 202.66, "percent_change": 2.91, "signals": {"persistence_prob_24h": 0.6889, "fade_risk": 0.3111, "vol_regime": "calm", "vol_estimate_24h": 0.00429, "attention_intensity": 0.52}, "reasons": ["reappeared on the board very recently", "down on the day", "heavy trading"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "'Big Short' Michael Burry Bets Against Nvidia and Tesla Again", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.209, "p_flat": 0.691, "p_up": 0.1, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.739, "epistemic_std": 0.0039, "regime": "elevated", "regime_prob": 0.76, "regime_epistemic_std": 0.004}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "AAPL", "sector": "Technology", "last_price": 313.84, "percent_change": 1.02, "signals": {"persistence_prob_24h": 0.7178, "fade_risk": 0.2822, "vol_regime": "moderate", "vol_estimate_24h": 0.01784, "attention_intensity": 0.36}, "reasons": ["reappeared on the board very recently", "down on the day", "volume below its own recent norm"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": -1.0, "label": "negative", "headline": "Broadcom Spikes 5% on Expanded Apple Chip Deal; Intel and AMD Drift Lower", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.286, "p_flat": 0.622, "p_up": 0.092, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.794, "epistemic_std": 0.0053, "regime": "elevated", "regime_prob": 0.742, "regime_epistemic_std": 0.0046}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "AMC", "sector": "Communication Services", "last_price": 1.92, "percent_change": 11.65, "signals": {"persistence_prob_24h": 0.7226, "fade_risk": 0.2774, "vol_regime": "moderate", "vol_estimate_24h": 0.01299, "attention_intensity": 0.293}, "reasons": ["reappeared on the board very recently", "volume below its own recent norm", "weak 3-step momentum"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "AMC (AMC) Stock Looks Undervalued On Sales But Overvalued In Broader Checks", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.19, "p_flat": 0.687, "p_up": 0.123, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.757, "epistemic_std": 0.0041, "regime": "elevated", "regime_prob": 0.691, "regime_epistemic_std": 0.0056}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "ANET", "sector": "Technology", "last_price": 177.92, "percent_change": 6.88, "signals": {"persistence_prob_24h": 0.7341, "fade_risk": 0.2659, "vol_regime": "calm", "vol_estimate_24h": 0.00593, "attention_intensity": 0.32}, "reasons": ["reappeared on the board very recently", "volume below its own recent norm", "new to the board"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 1.0, "label": "positive", "headline": "Stock Market Today: Dow Droops As Ceasefire In Iran Ends; Alibaba Hits Rally Mode (Live Coverage)", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.125, "p_flat": 0.78, "p_up": 0.095, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.617, "epistemic_std": 0.0035, "regime": "elevated", "regime_prob": 0.785, "regime_epistemic_std": 0.0037}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "XOM", "sector": "Energy", "last_price": 140.76, "percent_change": -0.66, "signals": {"persistence_prob_24h": 0.7629, "fade_risk": 0.2371, "vol_regime": "calm", "vol_estimate_24h": 0.00679, "attention_intensity": 0.56}, "reasons": ["reappeared on the board very recently", "down on the day", "pulling back vs last appearance"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Stocks to Watch: Broadcom, Alibaba, Chevron, Levi Strauss", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.047, "p_flat": 0.891, "p_up": 0.062, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.382, "epistemic_std": 0.0025, "regime": "elevated", "regime_prob": 0.74, "regime_epistemic_std": 0.0054}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "OXY", "sector": "Energy", "last_price": 53.59, "percent_change": 3.7, "signals": {"persistence_prob_24h": 0.771, "fade_risk": 0.229, "vol_regime": "calm", "vol_estimate_24h": 0.00377, "attention_intensity": 0.687}, "reasons": ["down on the day", "weak 3-step momentum", "long gap since last appearance"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 1.0, "label": "positive", "headline": "Occidental Petroleum Jumps 4% While ExxonMobil, Chevron Lag: Evercore Upgrade and Oil Spike Fuel OXY\u2019s Lead", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.047, "p_flat": 0.881, "p_up": 0.072, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.404, "epistemic_std": 0.0031, "regime": "elevated", "regime_prob": 0.691, "regime_epistemic_std": 0.0059}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "SDOT", "sector": "Consumer Defensive", "last_price": 21.36, "percent_change": -46.6, "signals": {"persistence_prob_24h": 0.8014, "fade_risk": 0.1986, "vol_regime": "elevated", "vol_estimate_24h": 0.04246, "attention_intensity": 0.593}, "reasons": ["up sharply on the day", "small-cap (structurally volatile)", "long gap since last appearance"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Wall Street Shrugs Off Banking Jitters as US Equity Futures Waver Pre-Bell", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.19, "p_flat": 0.586, "p_up": 0.224, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.877, "epistemic_std": 0.0082, "regime": "high", "regime_prob": 0.445, "regime_epistemic_std": 0.0135}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "IOTR", "sector": "Communication Services", "last_price": 3.47, "percent_change": 37.15, "signals": {"persistence_prob_24h": 0.8122, "fade_risk": 0.1878, "vol_regime": "elevated", "vol_estimate_24h": 0.05222, "attention_intensity": 0.547}, "reasons": ["new to the board", "up sharply on the day", "small-cap (structurally volatile)"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Top Midday Gainers", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.313, "p_flat": 0.417, "p_up": 0.269, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.985, "epistemic_std": 0.0054, "regime": "high", "regime_prob": 0.407, "regime_epistemic_std": 0.0098}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "RGC", "sector": "Healthcare", "last_price": 6.48, "percent_change": 8.91, "signals": {"persistence_prob_24h": 0.8138, "fade_risk": 0.1862, "vol_regime": "moderate", "vol_estimate_24h": 0.00791, "attention_intensity": 0.46}, "reasons": ["weak 3-step momentum", "thin trading", "volume below its own recent norm"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Auditor Change Puts Regencell Bioscience Governance And Cash Runway In Focus", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.151, "p_flat": 0.7, "p_up": 0.149, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.746, "epistemic_std": 0.0046, "regime": "elevated", "regime_prob": 0.589, "regime_epistemic_std": 0.0065}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "EDBL", "sector": "Consumer Defensive", "last_price": 0.1191, "percent_change": 35.8, "signals": {"persistence_prob_24h": 0.8148, "fade_risk": 0.1852, "vol_regime": "elevated", "vol_estimate_24h": 0.03461, "attention_intensity": 0.62}, "reasons": ["small-cap (structurally volatile)", "new to the board", "heavy trading"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": -1.0, "label": "negative", "headline": "Wall Street Set to Open Lower in Wednesday Trading; Key Employment Data Falls Short of Forecasts", "backend": "lexicon"}, "bayes": {"direction": "DOWN", "p_down": 0.499, "p_flat": 0.36, "p_up": 0.14, "confidence": "medium", "actionable": false, "action": "stand_aside", "entropy": 0.901, "epistemic_std": 0.0072, "regime": "high", "regime_prob": 0.495, "regime_epistemic_std": 0.0119}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "CAN", "sector": "Technology", "last_price": 0.326, "percent_change": 22.1, "signals": {"persistence_prob_24h": 0.8317, "fade_risk": 0.1683, "vol_regime": "moderate", "vol_estimate_24h": 0.01788, "attention_intensity": 0.173}, "reasons": ["reappeared on the board very recently", "new to the board", "up sharply on the day"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": -1.0, "label": "negative", "headline": "Asian Equities Traded in the US as American Depositary Receipts Drop Sharply in Tuesday Trading", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.361, "p_flat": 0.439, "p_up": 0.201, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.957, "epistemic_std": 0.0112, "regime": "elevated", "regime_prob": 0.552, "regime_epistemic_std": 0.0099}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "AVGO", "sector": "Technology", "last_price": 388.99, "percent_change": 4.91, "signals": {"persistence_prob_24h": 0.8515, "fade_risk": 0.1485, "vol_regime": "calm", "vol_estimate_24h": 0.00378, "attention_intensity": 0.713}, "reasons": ["long gap since last appearance", "pulling back vs last appearance", "weak 3-step momentum"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": -1.0, "label": "negative", "headline": "Broadcom Spikes 5% on Expanded Apple Chip Deal; Intel and AMD Drift Lower", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.282, "p_flat": 0.628, "p_up": 0.09, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.789, "epistemic_std": 0.0057, "regime": "elevated", "regime_prob": 0.741, "regime_epistemic_std": 0.0048}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "LUCY", "sector": "Healthcare", "last_price": 1.205, "percent_change": -5.1, "signals": {"persistence_prob_24h": 0.855, "fade_risk": 0.145, "vol_regime": "elevated", "vol_estimate_24h": 0.03538, "attention_intensity": 0.527}, "reasons": ["new to the board", "long gap since last appearance", "weak 3-step momentum"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Top Midday Gainers", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.328, "p_flat": 0.424, "p_up": 0.247, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.978, "epistemic_std": 0.0061, "regime": "high", "regime_prob": 0.437, "regime_epistemic_std": 0.008}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "QXO", "sector": "Industrials", "last_price": 14.38, "percent_change": -5.71, "signals": {"persistence_prob_24h": 0.8727, "fade_risk": 0.1273, "vol_regime": "moderate", "vol_estimate_24h": 0.01186, "attention_intensity": 0.647}, "reasons": ["new to the board", "long gap since last appearance", "down on the day"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "NTTYY vs. QXO: Which Stock Is the Better Value Option?", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.14, "p_flat": 0.765, "p_up": 0.095, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.641, "epistemic_std": 0.0042, "regime": "elevated", "regime_prob": 0.712, "regime_epistemic_std": 0.0048}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "ONFO", "sector": "Communication Services", "last_price": 0.2885, "percent_change": -26.89, "signals": {"persistence_prob_24h": 0.8746, "fade_risk": 0.1254, "vol_regime": "elevated", "vol_estimate_24h": 0.052, "attention_intensity": 0.527}, "reasons": ["small-cap (structurally volatile)", "new to the board", "up sharply on the day"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Onfolio Holdings Inc (ONFO) Q1 2026 Earnings Call Highlights: Strategic Shifts Amid Revenue ...", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.356, "p_flat": 0.372, "p_up": 0.272, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.992, "epistemic_std": 0.0057, "regime": "high", "regime_prob": 0.506, "regime_epistemic_std": 0.011}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "BATL", "sector": "Energy", "last_price": 1.595, "percent_change": -10.39, "signals": {"persistence_prob_24h": 0.8928, "fade_risk": 0.1072, "vol_regime": "elevated", "vol_estimate_24h": 0.03563, "attention_intensity": 0.66}, "reasons": ["long gap since last appearance", "small-cap (structurally volatile)", "weak 3-step momentum"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Why Are BATL, INDO, XOM, CVX, USO, UCO Rising Overnight?", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.17, "p_flat": 0.657, "p_up": 0.173, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.801, "epistemic_std": 0.0066, "regime": "elevated", "regime_prob": 0.486, "regime_epistemic_std": 0.0075}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "BE", "sector": "Industrials", "last_price": 249.63, "percent_change": -7.4, "signals": {"persistence_prob_24h": 0.9059, "fade_risk": 0.0941, "vol_regime": "calm", "vol_estimate_24h": 0.00276, "attention_intensity": 0.413}, "reasons": ["reappeared on the board very recently", "volume below its own recent norm", "up sharply on the day"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": -1.0, "label": "negative", "headline": "FuelCell Energy Sinks 14%, Bloom Energy Slides 8% After $225M FCEL Share Sale Prices at $21; Plug Power Treads Water", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.147, "p_flat": 0.786, "p_up": 0.066, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.593, "epistemic_std": 0.0049, "regime": "elevated", "regime_prob": 0.747, "regime_epistemic_std": 0.005}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "PRME", "sector": "Healthcare", "last_price": 4.635, "percent_change": 16.17, "signals": {"persistence_prob_24h": 0.9108, "fade_risk": 0.0892, "vol_regime": "moderate", "vol_estimate_24h": 0.00759, "attention_intensity": 0.627}, "reasons": ["new to the board", "up sharply on the day", "long gap since last appearance"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Gene Editors, Including Powerhouse Beam Therapeutics, Diverge On Legal Battle", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.191, "p_flat": 0.642, "p_up": 0.167, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.818, "epistemic_std": 0.0048, "regime": "elevated", "regime_prob": 0.583, "regime_epistemic_std": 0.0067}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "FCEL", "sector": "Industrials", "last_price": 22.75, "percent_change": -12.37, "signals": {"persistence_prob_24h": 0.9181, "fade_risk": 0.0819, "vol_regime": "calm", "vol_estimate_24h": 0.00634, "attention_intensity": 0.807}, "reasons": ["long gap since last appearance", "small-cap (structurally volatile)", "weak 3-step momentum"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Why FuelCell Energy Stock Is Tumbling on Wednesday", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.162, "p_flat": 0.675, "p_up": 0.163, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.779, "epistemic_std": 0.0053, "regime": "elevated", "regime_prob": 0.634, "regime_epistemic_std": 0.0065}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "BABA", "sector": "Consumer Cyclical", "last_price": 109.33, "percent_change": 11.41, "signals": {"persistence_prob_24h": 0.9278, "fade_risk": 0.0722, "vol_regime": "calm", "vol_estimate_24h": 0.00325, "attention_intensity": 0.7}, "reasons": ["long gap since last appearance", "new to the board", "narrow board"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 1.0, "label": "positive", "headline": "China to let AI firms buy Nvidia H200 chips, the Information reports", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.118, "p_flat": 0.818, "p_up": 0.064, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.539, "epistemic_std": 0.002, "regime": "elevated", "regime_prob": 0.796, "regime_epistemic_std": 0.0031}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "NVVE", "sector": "Consumer Cyclical", "last_price": 10.38, "percent_change": 100.39, "signals": {"persistence_prob_24h": 0.9388, "fade_risk": 0.0612, "vol_regime": "elevated", "vol_estimate_24h": 0.03058, "attention_intensity": 0.58}, "reasons": ["up sharply on the day", "new to the board", "small-cap (structurally volatile)"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Nuvve (NVVE) Q4 2025 Earnings Call Transcript", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.358, "p_flat": 0.406, "p_up": 0.236, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.978, "epistemic_std": 0.0058, "regime": "high", "regime_prob": 0.461, "regime_epistemic_std": 0.008}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "VTAK", "sector": "Healthcare", "last_price": 1.495, "percent_change": 109.0, "signals": {"persistence_prob_24h": 0.9788, "fade_risk": 0.0212, "vol_regime": "elevated", "vol_estimate_24h": 0.03444, "attention_intensity": 0.58}, "reasons": ["up sharply on the day", "heavy trading", "new to the board"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Catheter Precision\u2019s LockeT suture retention device features at ISLAA 2026", "backend": "lexicon"}, "bayes": {"direction": "DOWN", "p_down": 0.418, "p_flat": 0.366, "p_up": 0.217, "confidence": "medium", "actionable": false, "action": "stand_aside", "entropy": 0.968, "epistemic_std": 0.0055, "regime": "high", "regime_prob": 0.438, "regime_epistemic_std": 0.0087}}, {"snapshot": "2026-07-08T18:41:36.086878", "ticker": "PENG", "sector": "Technology", "last_price": 78.63, "percent_change": 25.39, "signals": {"persistence_prob_24h": 0.979, "fade_risk": 0.021, "vol_regime": "calm", "vol_estimate_24h": 0.00656, "attention_intensity": 0.727}, "reasons": ["up sharply on the day", "long gap since last appearance", "large-cap (structurally calmer)"], "model_versions": {"persistence": "lgb_24h_v1", "vol": "lgb_24h_v1", "bayes": "boot_logistic_v1"}, "sentiment": {"score": 0.0, "label": "neutral", "headline": "Why Are Penguin Solutions (PENG) Shares Soaring Today", "backend": "lexicon"}, "bayes": {"direction": "FLAT", "p_down": 0.189, "p_flat": 0.636, "p_up": 0.175, "confidence": "low", "actionable": false, "action": "stand_aside", "entropy": 0.826, "epistemic_std": 0.0051, "regime": "elevated", "regime_prob": 0.678, "regime_epistemic_std": 0.005}}];
+const REGIME_ORDER = {calm:0, moderate:1, elevated:2, high:3};
+const el = (t,c,h)=>{const e=document.createElement(t); if(c)e.className=c; if(h!=null)e.innerHTML=h; return e;};
+
+function sentBadge(s){ const c = s.label==='positive'?'pos':s.label==='negative'?'neg':'neu';
+  return `<span class="badge ${c}" title="${(s.headline||'').replace(/"/g,'&quot;')}">${s.label} ${s.score>0?'+':''}${s.score}</span>`; }
+function bar(v,color){ return `<span class="bar"><i style="width:${Math.round((v||0)*100)}%;background:${color}"></i></span>`; }
+
+function dirCell(b){
+  if(!b || !b.actionable) return '<span class="muted">—</span>';
+  const c = b.action==='up'?'up':'down';
+  return `<span class="${c}" title="p_up ${b.p_up} / p_down ${b.p_down} · epistemic ${b.epistemic_std}">`
+       + `${b.action==='up'?'▲ LONG':'▼ SHORT'} (${Math.max(b.p_up,b.p_down)})</span>`;
+}
+
+function actionableCards(){
+  const host = document.getElementById('actionable');
+  const acts = SIGNALS.filter(r=>r.bayes && r.bayes.actionable);
+  if(!acts.length){ host.innerHTML = '<div class="muted">No high-conviction directional calls this snapshot — the models are standing aside (the expected default).</div>'; return; }
+  acts.sort((a,b)=>Math.max(b.bayes.p_up,b.bayes.p_down)-Math.max(a.bayes.p_up,a.bayes.p_down));
+  acts.forEach(r=>{ const b=r.bayes; const long=b.action==='up';
+    const c = el('div','card');
+    c.innerHTML = `<span class="act ${long?'long':'short'}">${long?'LONG':'SHORT'}</span>`
+      + `<div class="tk">${r.ticker}</div>`
+      + `<div class="meta">${r.sector||''} · $${r.last_price} <span class="${r.percent_change>=0?'up':'down'}">${r.percent_change>=0?'+':''}${r.percent_change}%</span></div>`
+      + `<div class="meta">conf ${Math.max(b.p_up,b.p_down)} · risk <span class="${b.regime}">${b.regime}</span> · ${sentBadge(r.sentiment)}</div>`
+      + (r.sentiment.headline?`<div class="hl">${r.sentiment.headline}</div>`:'');
+    host.appendChild(c); });
+}
+
+function render(){
+  const sortBy=document.getElementById('sort').value;
+  const sec=document.getElementById('sector').value;
+  const actonly=document.getElementById('actonly').checked;
+  let rows=SIGNALS.slice();
+  if(sec) rows=rows.filter(r=>r.sector===sec);
+  if(actonly) rows=rows.filter(r=>r.bayes&&r.bayes.actionable);
+  const key={attention:r=>-r.signals.attention_intensity, fade:r=>-r.signals.fade_risk,
+    pctchg:r=>-(r.percent_change||0), risk:r=>-(REGIME_ORDER[r.signals.vol_regime]||0),
+    sentiment:r=>-(r.sentiment.score||0)}[sortBy];
+  rows.sort((a,b)=>key(a)-key(b));
+  const tb=document.querySelector('#tbl tbody'); tb.innerHTML='';
+  rows.forEach(r=>{ const s=r.signals; const tr=el('tr');
+    tr.innerHTML =
+      `<td><b>${r.ticker}</b></td><td class="muted">${r.sector||''}</td>`
+    + `<td class="num">${r.last_price??''}</td>`
+    + `<td class="num ${r.percent_change>=0?'up':'down'}">${r.percent_change>=0?'+':''}${r.percent_change??''}</td>`
+    + `<td class="${s.vol_regime}">${s.vol_regime}</td>`
+    + `<td>${bar(s.fade_risk,'var(--red)')} <span class="muted">${s.fade_risk}</span></td>`
+    + `<td>${dirCell(r.bayes)}</td>`
+    + `<td>${sentBadge(r.sentiment)}</td>`
+    + `<td>${bar(s.attention_intensity,'var(--blue)')}</td>`
+    + `<td class="reasons">${(r.reasons||[]).join(' · ')}</td>`;
+    tb.appendChild(tr); });
+}
+
+(function init(){
+  const secs=[...new Set(SIGNALS.map(r=>r.sector).filter(Boolean))].sort();
+  const sel=document.getElementById('sector'); secs.forEach(s=>sel.appendChild(el('option',null,s)).value=s);
+  ['sort','sector','actonly'].forEach(id=>document.getElementById(id).addEventListener('input',render));
+  actionableCards(); render();
+})();
+</script>
 </body>
 </html>
